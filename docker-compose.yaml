@@ -1,0 +1,44 @@
+version: "3"
+
+services:
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    tty: true
+    working_dir: /data
+    command: >
+      streamlit run streamlit_app.py --server.port=8080 --server.address=0.0.0.0
+    ports:
+      - 8000:8080
+    volumes:
+      - .:/data
+    depends_on:
+      - flask-app
+    networks:
+      - chatnet
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.chat
+    tty: true
+    working_dir: /data
+    command: >
+      gunicorn  --bind 0.0.0.0:5858 api:app --worker-class uvicorn.workers.UvicornWorker --timeout 0
+    ports:
+      - 5858:5858
+    volumes:
+      - .:/data
+    networks:
+      - chatnet
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+networks:
+  chatnet:
+    driver: bridge
